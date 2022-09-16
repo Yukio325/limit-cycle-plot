@@ -1,3 +1,4 @@
+from tkinter import E
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Arc
@@ -45,20 +46,19 @@ fig = plt.figure(figsize=(10, 7.8))
 
 vel = 0.05
 
-b = Obstacle(1.3, .9, (.0427/2))
-t = Point(1.3, .9) # target
+ball = Obstacle(1.3, 1.2, (.0427/2))
+t = Point(ball.x, ball.y) # target
 # t = Point(1.2, 1.2)
 r_v = .085*(np.sqrt(2)) # avoidance radius
-q = Point(1.2, .65, r_v) # obstacle
-r = Point(1.0125, .5875, 0) # robot
-r = Point(1, .3, 0)
+q = Point(1.2, .65, r_v) # obstacle 
+r = Point(1, .3, 0) # robot
 # r = Point(.2, .2, 0)
 
-j = (b.x - 1.5)/(0.65 - b.y)
+j = (ball.x - 1.5)/(0.65 - ball.y)
 p = 0.05
 
-vo_1 = Obstacle(b.x+p*math.cos(j), b.y+p*math.sin(j), p)
-vo_2 = Obstacle(b.x-p*math.cos(j), b.y-p*math.sin(j), p)
+vo_1 = Obstacle(ball.x+p*math.cos(j), ball.y+p*math.sin(j), p)
+vo_2 = Obstacle(ball.x-p*math.cos(j), ball.y-p*math.sin(j), p)
 
 obstacles = [q, vo_2]
 obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
@@ -75,7 +75,7 @@ ax.add_patch(Circle((.75, .65), .2, fill=None, alpha=1))
 ax.add_patch(Arc((.15, .65), .1, 0.2, angle=0, theta1=-90, theta2=90, fill=None, alpha=1))
 ax.add_patch(Arc((1.5-.15, .65), .1, 0.2, angle=0, theta1=90, theta2=-90, fill=None, alpha=1))
 
-ax.add_patch(Circle((b.x, b.y), b.r, fill=True, color="orange", alpha=1))
+ax.add_patch(Circle((ball.x, ball.y), ball.r, fill=True, color="orange", alpha=1))
 ax.add_patch(Rectangle((q.x-(.075/2), q.y-(.075/2)), .075, .075, fill=True, color="yellow", alpha=1))
 ax.add_patch(Circle((q.x, q.y), r_v, fill=None, color="black", alpha=1))
 tra = Affine2D().rotate_deg_around(r.x, r.y, r.theta) + ax.transData
@@ -97,9 +97,10 @@ d = (a*q.x + b*q.y + c)/np.sqrt(a**2 + b**2)
 path_x = []
 path_y = []
 
-# while round(r.x, 2) != t.x and round(r.y, 2) != t.y:
-for i in range(5000):
-    dt = 0.001
+# while not round(r.x, 2) == round(t.x, 2) and not round(r.y, 2) == round(t.y):
+while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
+    _fps = 60
+    dt = 1/_fps
     
     x = np.linspace(r.x, t.x, 10)
 
@@ -109,11 +110,42 @@ for i in range(5000):
 
     y = (-a*x - c)/b
 
-    if discriminant(a, b, c, obstacles[0].x, obstacles[0].y, obstacles[0].r) > 0:
+    if len(obstacles) > 1:
+        o = (obstacles[0].x-obstacles[1].x)/(obstacles[1].y-obstacles[0].y)
+
+        if r.y < o*(r.x-obstacles[0].x)+obstacles[0].y:
+
+            dx = r.x - obstacles[0].x
+            dy = r.y - obstacles[0].y
+
+            p = int(15*1/math.sqrt(dx**2 + dy**2))
+
+            print(f"{p=}")
+
+            ddx = (d/abs(d))*dy + dx*(obstacles[0].r**2 - dx**2 - dy**2)*p
+            ddy = -(d/abs(d))*dx + dy*(obstacles[0].r**2 - dx**2 - dy**2)*p
+
+            theta_d = math.atan2(ddy, ddx)
+
+            #print(theta_d)
+
+            path_x.append(r.x)
+            path_y.append(r.y)
+            # plt.plot(x, y, color="grey", linewidth=1)
+
+            r.x = r.x + dt*ddx
+            r.y = r.y + dt*ddy
+
+        else:
+            obstacles.pop(0)
+
+            path_x.append(r.x)
+            path_y.append(r.y)
+    else:
         dx = r.x - obstacles[0].x
         dy = r.y - obstacles[0].y
 
-        p = int(15*1/math.sqrt(dx**2 + dy**2))
+        p = int(12.5*1/math.sqrt(dx**2 + dy**2))
 
         print(f"{p=}")
 
@@ -130,18 +162,6 @@ for i in range(5000):
 
         r.x = r.x + dt*ddx
         r.y = r.y + dt*ddy
-        
-    else:
-        ax.add_patch(Circle((r.x, r.y), .01, fill=None, color="red", alpha=1))
-        obstacles.pop(0)
-
-        path_x.append(r.x)
-        path_y.append(r.y)
-
-        r.x = r.x + dt
-        r.y = (-a*r.x - c)/b
-    
-    #plt.plot(x, y, color="blue", linewidth=1)
 
 plt.plot(path_x, path_y)
 
