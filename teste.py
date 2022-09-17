@@ -1,8 +1,6 @@
-from tkinter import E
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Arc
-from matplotlib import animation
 import math
 from matplotlib.transforms import Affine2D
 
@@ -46,19 +44,18 @@ fig = plt.figure(figsize=(10, 7.8))
 
 vel = 0.05
 
-ball = Obstacle(1.3, 1.2, (.0427/2))
+ball = Obstacle(1.3, .9, (.0427/2))
 t = Point(ball.x, ball.y) # target
-# t = Point(1.2, 1.2)
-r_v = .085*(np.sqrt(2)) # avoidance radius
+r_v = .12 # avoidance radius
 q = Point(1.2, .65, r_v) # obstacle 
 r = Point(1, .3, 0) # robot
-# r = Point(.2, .2, 0)
 
 j = (ball.x - 1.5)/(0.65 - ball.y)
+j_r = math.atan2((0.65 - ball.y), 1.5 - ball.x) + math.pi/2
 p = 0.05
 
-vo_1 = Obstacle(ball.x+p*math.cos(j), ball.y+p*math.sin(j), p)
-vo_2 = Obstacle(ball.x-p*math.cos(j), ball.y-p*math.sin(j), p)
+vo_1 = Obstacle(ball.x+p*math.cos(j_r), ball.y+p*math.sin(j_r), p)
+vo_2 = Obstacle(ball.x-p*math.cos(j_r), ball.y-p*math.sin(j_r), p)
 
 obstacles = [q, vo_2]
 obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
@@ -97,7 +94,6 @@ d = (a*q.x + b*q.y + c)/np.sqrt(a**2 + b**2)
 path_x = []
 path_y = []
 
-# while not round(r.x, 2) == round(t.x, 2) and not round(r.y, 2) == round(t.y):
 while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
     _fps = 60
     dt = 1/_fps
@@ -111,7 +107,12 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
     y = (-a*x - c)/b
 
     if len(obstacles) > 1:
-        o = (obstacles[0].x-obstacles[1].x)/(obstacles[1].y-obstacles[0].y)
+        o = math.tan(
+            math.atan2(
+                obstacles[1].y - obstacles[0].y,
+                obstacles[1].x - obstacles[0].x
+            ) + math.pi/2
+        )
 
         if r.y < o*(r.x-obstacles[0].x)+obstacles[0].y:
 
@@ -122,16 +123,15 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
             print(f"{p=}")
 
+            d = (a*obstacles[0].x + b*obstacles[0].y + c)/np.sqrt(a**2 + b**2)
+
             ddx = (d/abs(d))*dy + dx*(obstacles[0].r**2 - dx**2 - dy**2)*p
             ddy = -(d/abs(d))*dx + dy*(obstacles[0].r**2 - dx**2 - dy**2)*p
 
             theta_d = math.atan2(ddy, ddx)
 
-            #print(theta_d)
-
             path_x.append(r.x)
             path_y.append(r.y)
-            # plt.plot(x, y, color="grey", linewidth=1)
 
             r.x = r.x + dt*ddx
             r.y = r.y + dt*ddy
@@ -145,7 +145,7 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
         dx = r.x - obstacles[0].x
         dy = r.y - obstacles[0].y
 
-        p = int(12.5*1/math.sqrt(dx**2 + dy**2))
+        p = int(15*1/math.sqrt(dx**2 + dy**2))
 
         print(f"{p=}")
 
@@ -154,37 +154,13 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
         theta_d = math.atan2(ddy, ddx)
 
-        #print(theta_d)
-
         path_x.append(r.x)
         path_y.append(r.y)
-        # plt.plot(x, y, color="grey", linewidth=1)
 
         r.x = r.x + dt*ddx
         r.y = r.y + dt*ddy
 
 plt.plot(path_x, path_y)
-
-# patch = Circle((1, 1), .0427/2, fill=True, color="orange", alpha=1)
-
-# ball = Ball(1, 1, 0.01, 0.01)
-
-# def init():
-#     patch.center = (ball.x, ball.y)
-#     ax.add_patch(patch)
-#     return patch,
-
-# def animate(i):
-#     bx, by = patch.center
-#     ball.update()
-#     patch.center = (ball.x, ball.y)
-#     return patch,
-
-# anim = animation.FuncAnimation(fig, animate, 
-#                                init_func=init, 
-#                                frames=500, 
-#                                interval=20,
-#                                blit=True)
 
 # Setting x, y boundary limits
 plt.xlim(-0.15, 1.65)
