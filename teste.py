@@ -5,11 +5,11 @@ import math
 from matplotlib.transforms import Affine2D
 
 class Point():
-    def __init__(self, x, y, r=None, theta=None):
+    def __init__(self, x, y, r=None, is_vo=False):
         self.x = x
         self.y = y
         self.r = r
-        self.theta = 0
+        self.is_vo = is_vo
 
 class Ball():
     def __init__(self, x, y, vx, vy):
@@ -19,11 +19,12 @@ class Ball():
         self.vy = vy
 
 class Obstacle():
-    def __init__(self, x, y, r, side=None):
+    def __init__(self, x, y, r, side=None, is_vo=False):
         self.x = x
         self.y = y
         self.r = r
         self.side = side
+        self.is_vo = is_vo
 
 def discriminant(a, b, c, o):
     k = 1 + (a**2/b**2)
@@ -44,7 +45,7 @@ def contour(a, b, c, robot, obst, idx=15, is_vo=False):
         
         mlt = int(idx/math.sqrt(dx**2 + dy**2))
 
-        if is_vo:
+        if obst.is_vo:
             if obst.side == "R": #cw
                 d = 1
             else: # ccw
@@ -61,15 +62,19 @@ fig = plt.figure(figsize=(10, 7.8))
 
 vel = 0.05
 
+ball = Obstacle(1.3, .4, (.0427/2))
 ball = Obstacle(1.3, .9, (.0427/2))
-t = Point(ball.x, ball.y) # target
-r_v = .12 # avoidance radius
-q = Point(1.2, .65, r_v) # obstacle 
-r = Point(1, .3, 0) # robot
 
 j = math.atan2((0.65 - ball.y), 1.5 - ball.x)
+
+t = Point(ball.x-ball.r*math.cos(j), ball.y-ball.r*math.sin(j)) # target
+r_v = .12 # avoidance radius
+q = Point(1.2, .65, r_v) # obstacle 
+r = Point(1, 1, 0) # robot
+r = Point(1, .3, 0) # robot
+
 j_r = j + math.pi/2
-p = 0.05
+p = 0.075
 
 if r.y < j*(r.x - ball.x) + ball.y:
     vo = Obstacle(t.x - p*math.cos(j_r), t.y - p*math.sin(j_r), p, side="R")
@@ -93,8 +98,7 @@ ax.add_patch(Arc((1.5-.15, .65), .1, 0.2, angle=0, theta1=90, theta2=-90, fill=N
 ax.add_patch(Circle((ball.x, ball.y), ball.r, fill=True, color="orange", alpha=1))
 ax.add_patch(Rectangle((q.x-(.075/2), q.y-(.075/2)), .075, .075, fill=True, color="yellow", alpha=1))
 ax.add_patch(Circle((q.x, q.y), r_v, fill=None, color="black", alpha=1))
-tra = Affine2D().rotate_deg_around(r.x, r.y, r.theta) + ax.transData
-ax.add_patch(Rectangle((r.x-(.075/2), r.y-(.075/2)), .075, .075, fill=True, color="blue", alpha=1, transform=tra))
+ax.add_patch(Rectangle((r.x-(.075/2), r.y-(.075/2)), .075, .075, fill=True, color="blue", alpha=1))
 
 ax.add_patch(Circle((vo.x, vo.y), vo.r, fill=None, color="black", alpha=1))
 
@@ -122,7 +126,7 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
     c = t.x*r.y - r.x*t.y
     
     obstacles = list(filter(lambda o: filter_func(a, b, c, r, t, o), obstacles))
-    print(obstacles)
+    # print(obstacles)
     obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
 
     if len(obstacles) > 1:
@@ -145,7 +149,7 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
         else:
 
-            r_x, r_y = contour(a, b, c, r, obstacles[0], 12.5)
+            r_x, r_y = contour(a, b, c, r, obstacles[1])
 
             r.x = r_x
             r.y = r_y    
@@ -155,7 +159,7 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
     elif len(obstacles) > 0:
 
-        r_x, r_y = contour(a, b, c, r, obstacles[0], 12.5, is_vo=True)
+        r_x, r_y = contour(a, b, c, r, obstacles[0], 10)
 
         r.x = r_x
         r.y = r_y
@@ -165,12 +169,10 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
     else:
 
-        a = t.y - r.y
-        b = r.x - t.x
-        c = t.x*r.y - r.x*t.y
+        r_x, r_y = contour(a, b, c, r, vo, 12.5)
 
-        r.x = r.x + dt
-        r.y = (-a*r.x -c)/b
+        r.x = r_x
+        r.y = r_y
 
         path_x.append(r.x)
         path_y.append(r.y)
