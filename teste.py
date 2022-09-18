@@ -18,27 +18,44 @@ class Ball():
         self.vx = vx
         self.vy = vy
 
-    def update(self):
-        if self.x + .0427/2 > 1.5 or self.x - .0427/2 < 0:
-            self.vx *= -1
-        if self.y + .0427/2 > 1.3 or self.y - .0427/2 < 0:
-            self.vy *= -1
-
-        self.x += self.vx
-        self.y += self.vy
-
 class Obstacle():
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, side=None):
         self.x = x
         self.y = y
         self.r = r
+        self.side = side
 
-def discriminant(a, b, c, O_x, O_y, O_r):
+def discriminant(a, b, c, o):
     k = 1 + (a**2/b**2)
-    l = -2*O_x + (2*a*c)/b**2 + (2*a*O_y)/b
-    m = O_x**2 + O_y**2 - O_r**2 + c**2/b**2 + (2*c*O_y)/b
+    l = -2*o.x + (2*a*c)/b**2 + (2*a*o.y)/b
+    m = o.x**2 + o.y**2 - o.r**2 + c**2/b**2 + (2*c*o.y)/b
     dscr = l**2 - 4*k*m
     return dscr
+
+def dist(p1, p2):
+    return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2)
+
+def filter_func(a, b, c, r, t, o):
+    return discriminant(a, b, c, o) > 0 and dist(o, r) < dist(r, t) and dist(o, t) < dist(r, t)
+
+def contour(a, b, c, robot, obst, idx=15, is_vo=False):
+        dx = robot.x - obst.x
+        dy = robot.y - obst.y
+        
+        mlt = int(idx/math.sqrt(dx**2 + dy**2))
+
+        if is_vo:
+            if obst.side == "R": #cw
+                d = 1
+            else: # ccw
+                d = -1
+        else:
+            d = (a*obst.x + b*obst.y + c)/math.sqrt(a**2 + b**2)
+        
+        ddx =  (d/abs(d))*dy + mlt*dx*(obst.r**2 - dx**2 - dy**2)
+        ddy = -(d/abs(d))*dx + mlt*dy*(obst.r**2 - dx**2 - dy**2)
+
+        return (robot.x + dt*ddx, robot.y + dt*ddy)
 
 fig = plt.figure(figsize=(10, 7.8))
 
@@ -50,15 +67,16 @@ r_v = .12 # avoidance radius
 q = Point(1.2, .65, r_v) # obstacle 
 r = Point(1, .3, 0) # robot
 
-j = (ball.x - 1.5)/(0.65 - ball.y)
-j_r = math.atan2((0.65 - ball.y), 1.5 - ball.x) + math.pi/2
+j = math.atan2((0.65 - ball.y), 1.5 - ball.x)
+j_r = j + math.pi/2
 p = 0.05
 
-vo_1 = Obstacle(ball.x+p*math.cos(j_r), ball.y+p*math.sin(j_r), p)
-vo_2 = Obstacle(ball.x-p*math.cos(j_r), ball.y-p*math.sin(j_r), p)
+if r.y < j*(r.x - ball.x) + ball.y:
+    vo = Obstacle(t.x - p*math.cos(j_r), t.y - p*math.sin(j_r), p, side="R")
+else:
+    vo = Obstacle(t.x + p*math.cos(j_r), t.y + p*math.sin(j_r), p, side="L")
 
-obstacles = [q, vo_2]
-obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
+obstacles = [q, vo]
 
 # Plotting Field
 ax = plt.gca()
@@ -78,8 +96,7 @@ ax.add_patch(Circle((q.x, q.y), r_v, fill=None, color="black", alpha=1))
 tra = Affine2D().rotate_deg_around(r.x, r.y, r.theta) + ax.transData
 ax.add_patch(Rectangle((r.x-(.075/2), r.y-(.075/2)), .075, .075, fill=True, color="blue", alpha=1, transform=tra))
 
-ax.add_patch(Circle((vo_1.x, vo_1.y), vo_1.r, fill=None, color="black", alpha=1))
-ax.add_patch(Circle((vo_2.x, vo_2.y), vo_2.r, fill=None, color="black", alpha=1))
+ax.add_patch(Circle((vo.x, vo.y), vo.r, fill=None, color="black", alpha=1))
 
 x = np.linspace(r.x, t.x, 10)
 
@@ -103,8 +120,10 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
     a = t.y - r.y
     b = r.x - t.x
     c = t.x*r.y - r.x*t.y
-
-    y = (-a*x - c)/b
+    
+    obstacles = list(filter(lambda o: filter_func(a, b, c, r, t, o), obstacles))
+    print(obstacles)
+    obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
 
     if len(obstacles) > 1:
         o = math.tan(
@@ -116,51 +135,48 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
 
         if r.y < o*(r.x-obstacles[0].x)+obstacles[0].y:
 
-            dx = r.x - obstacles[0].x
-            dy = r.y - obstacles[0].y
+            r_x, r_y = contour(a, b, c, r, obstacles[0])
 
-            p = int(15*1/math.sqrt(dx**2 + dy**2))
-
-            print(f"{p=}")
-
-            d = (a*obstacles[0].x + b*obstacles[0].y + c)/np.sqrt(a**2 + b**2)
-
-            ddx = (d/abs(d))*dy + dx*(obstacles[0].r**2 - dx**2 - dy**2)*p
-            ddy = -(d/abs(d))*dx + dy*(obstacles[0].r**2 - dx**2 - dy**2)*p
-
-            theta_d = math.atan2(ddy, ddx)
+            r.x = r_x
+            r.y = r_y
 
             path_x.append(r.x)
             path_y.append(r.y)
-
-            r.x = r.x + dt*ddx
-            r.y = r.y + dt*ddy
 
         else:
-            obstacles.pop(0)
+
+            r_x, r_y = contour(a, b, c, r, obstacles[0], 12.5)
+
+            r.x = r_x
+            r.y = r_y    
 
             path_x.append(r.x)
             path_y.append(r.y)
-    else:
-        dx = r.x - obstacles[0].x
-        dy = r.y - obstacles[0].y
 
-        p = int(15*1/math.sqrt(dx**2 + dy**2))
+    elif len(obstacles) > 0:
 
-        print(f"{p=}")
+        r_x, r_y = contour(a, b, c, r, obstacles[0], 12.5, is_vo=True)
 
-        ddx = (d/abs(d))*dy + dx*(obstacles[0].r**2 - dx**2 - dy**2)*p
-        ddy = -(d/abs(d))*dx + dy*(obstacles[0].r**2 - dx**2 - dy**2)*p
-
-        theta_d = math.atan2(ddy, ddx)
+        r.x = r_x
+        r.y = r_y
 
         path_x.append(r.x)
         path_y.append(r.y)
 
-        r.x = r.x + dt*ddx
-        r.y = r.y + dt*ddy
+    else:
+
+        a = t.y - r.y
+        b = r.x - t.x
+        c = t.x*r.y - r.x*t.y
+
+        r.x = r.x + dt
+        r.y = (-a*r.x -c)/b
+
+        path_x.append(r.x)
+        path_y.append(r.y)
 
 plt.plot(path_x, path_y)
+plt.plot([t.x, 1.5], [t.y, 0.65])
 
 # Setting x, y boundary limits
 plt.xlim(-0.15, 1.65)
