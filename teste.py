@@ -39,7 +39,7 @@ def dist(p1, p2):
 def filter_func(a, b, c, r, t, o):
     return discriminant(a, b, c, o) > 0 and dist(o, r) < dist(r, t) and dist(o, t) < dist(r, t)
 
-def contour(a, b, c, robot, obst, idx=15, is_vo=False):
+def contour(a, b, c, robot, obst, idx=15):
         dx = robot.x - obst.x
         dy = robot.y - obst.y
         
@@ -52,6 +52,8 @@ def contour(a, b, c, robot, obst, idx=15, is_vo=False):
                 d = -1
         else:
             d = (a*obst.x + b*obst.y + c)/math.sqrt(a**2 + b**2)
+
+        print(d)
         
         ddx =  (d/abs(d))*dy + mlt*dx*(obst.r**2 - dx**2 - dy**2)
         ddy = -(d/abs(d))*dx + mlt*dy*(obst.r**2 - dx**2 - dy**2)
@@ -67,7 +69,7 @@ ball = Obstacle(1.3, .9, (.0427/2))
 
 j = math.atan2((0.65 - ball.y), 1.5 - ball.x)
 
-t = Point(ball.x-ball.r*math.cos(j), ball.y-ball.r*math.sin(j)) # target
+t = Point(ball.x, ball.y) # target
 r_v = .12 # avoidance radius
 q = Point(1.2, .65, r_v) # obstacle 
 r = Point(1, 1, 0) # robot
@@ -77,9 +79,9 @@ j_r = j + math.pi/2
 p = 0.075
 
 if r.y < j*(r.x - ball.x) + ball.y:
-    vo = Obstacle(t.x - p*math.cos(j_r), t.y - p*math.sin(j_r), p, side="R")
+    vo = Obstacle(t.x - p*math.cos(j_r) - ball.r*math.cos(j), t.y - p*math.sin(j_r) - ball.r*math.sin(j), p, side="R", is_vo=True)
 else:
-    vo = Obstacle(t.x + p*math.cos(j_r), t.y + p*math.sin(j_r), p, side="L")
+    vo = Obstacle(t.x + p*math.cos(j_r) - ball.r*math.cos(j), t.y + p*math.sin(j_r) - ball.r*math.sin(j), p, side="L", is_vo=True)
 
 obstacles = [q, vo]
 
@@ -126,40 +128,13 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
     c = t.x*r.y - r.x*t.y
     
     obstacles = list(filter(lambda o: filter_func(a, b, c, r, t, o), obstacles))
-    # print(obstacles)
     obstacles.sort(key=lambda o: math.sqrt((o.x - r.x)**2 + (o.y - r.y)**2))
 
-    if len(obstacles) > 1:
-        o = math.tan(
-            math.atan2(
-                obstacles[1].y - obstacles[0].y,
-                obstacles[1].x - obstacles[0].x
-            ) + math.pi/2
-        )
+    print(f"{r.x=}\n{r.y=}")
+    print(f"{t.x=}\n{t.y=}")
 
-        if r.y < o*(r.x-obstacles[0].x)+obstacles[0].y:
-
-            r_x, r_y = contour(a, b, c, r, obstacles[0])
-
-            r.x = r_x
-            r.y = r_y
-
-            path_x.append(r.x)
-            path_y.append(r.y)
-
-        else:
-
-            r_x, r_y = contour(a, b, c, r, obstacles[1])
-
-            r.x = r_x
-            r.y = r_y    
-
-            path_x.append(r.x)
-            path_y.append(r.y)
-
-    elif len(obstacles) > 0:
-
-        r_x, r_y = contour(a, b, c, r, obstacles[0], 10)
+    if len(obstacles) > 0:
+        r_x, r_y = contour(a, b, c, r, obstacles[0])
 
         r.x = r_x
         r.y = r_y
@@ -168,7 +143,6 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
         path_y.append(r.y)
 
     else:
-
         r_x, r_y = contour(a, b, c, r, vo, 12.5)
 
         r.x = r_x
