@@ -83,7 +83,12 @@ if r.y < j*(r.x - ball.x) + ball.y:
 else:
     vo = Obstacle(t.x + p*math.cos(j_r) - ball.r*math.cos(j), t.y + p*math.sin(j_r) - ball.r*math.sin(j), p, side="L", is_vo=True)
 
-obstacles = [q, vo]
+target_is_ball = False
+
+if target_is_ball:
+    obstacles = [q, vo]
+else:
+    obstacles = [q]
 
 # Plotting Field
 ax = plt.gca()
@@ -143,13 +148,23 @@ while round(r.x, 2) != round(t.x, 2) and round(r.x, 2) != round(t.x, 2):
         path_y.append(r.y)
 
     else:
-        r_x, r_y = contour(a, b, c, r, vo, 12.5)
+        if target_is_ball:    
+            r_x, r_y = contour(a, b, c, r, vo, 12.5)
 
-        r.x = r_x
-        r.y = r_y
+            r.x = r_x
+            r.y = r_y
 
-        path_x.append(r.x)
-        path_y.append(r.y)
+            path_x.append(r.x)
+            path_y.append(r.y)
+        else:
+            r_x = r.x + dt
+            r_y = (-a*r_x - c)/b
+
+            r.x = r_x
+            r.y = r_y
+
+            path_x.append(r.x)
+            path_y.append(r.y)
 
 plt.plot(path_x, path_y)
 plt.plot([t.x, 1.5], [t.y, 0.65])
