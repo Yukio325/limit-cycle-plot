@@ -71,7 +71,9 @@ j = math.atan2((0.65 - ball.y), 1.5 - ball.x)
 
 t = Point(ball.x, ball.y) # target
 r_v = .12 # avoidance radius
-q = Point(1.2, .65, r_v) # obstacle 
+q_1 = Point(1.2, .65, r_v) # obstacle
+q_2 = Point(1.2 - 2*r_v*math.cos(math.pi/4), .65 + 2*r_v*math.sin(math.pi/4), r_v) # obstacle
+q_3 = Point(1.2 - r_v*math.cos(math.pi/4), .65 + r_v*math.sin(math.pi/4), r_v) # obstacle
 r = Point(1, 1, 0) # robot
 r = Point(1, .3, 0) # robot
 
@@ -85,11 +87,6 @@ else:
 
 target_is_ball = False
 
-if target_is_ball:
-    obstacles = [q, vo]
-else:
-    obstacles = [q]
-
 # Plotting Field
 ax = plt.gca()
 ax.add_patch(Rectangle((0, 0), 1.5, 1.3, fill=None, alpha=1))
@@ -101,23 +98,22 @@ ax.add_patch(Rectangle((1.5, .3), -.15, .7, fill=None, alpha=1))
 ax.add_patch(Circle((.75, .65), .2, fill=None, alpha=1))
 ax.add_patch(Arc((.15, .65), .1, 0.2, angle=0, theta1=-90, theta2=90, fill=None, alpha=1))
 ax.add_patch(Arc((1.5-.15, .65), .1, 0.2, angle=0, theta1=90, theta2=-90, fill=None, alpha=1))
-
-ax.add_patch(Circle((ball.x, ball.y), ball.r, fill=True, color="orange", alpha=1))
-ax.add_patch(Rectangle((q.x-(.075/2), q.y-(.075/2)), .075, .075, fill=True, color="yellow", alpha=1))
-ax.add_patch(Circle((q.x, q.y), r_v, fill=None, color="black", alpha=1))
 ax.add_patch(Rectangle((r.x-(.075/2), r.y-(.075/2)), .075, .075, fill=True, color="blue", alpha=1))
+ax.add_patch(Circle((ball.x, ball.y), ball.r, fill=True, color="orange", alpha=1))
 
-ax.add_patch(Circle((vo.x, vo.y), vo.r, fill=None, color="black", alpha=1))
+ax.add_patch(Rectangle((q_1.x-(.075/2), q_1.y-(.075/2)), .075, .075, fill=True, color="yellow", alpha=1))
+ax.add_patch(Circle((q_1.x, q_1.y), r_v, fill=None, color="black", alpha=1))
 
-x = np.linspace(r.x, t.x, 10)
+ax.add_patch(Rectangle((q_2.x-(.075/2), q_2.y-(.075/2)), .075, .075, fill=True, color="yellow", alpha=1))
+ax.add_patch(Circle((q_2.x, q_2.y), r_v, fill=None, color="black", alpha=1))
 
-a = t.y - r.y
-b = r.x - t.x
-c = t.x*r.y - r.x*t.y
+ax.add_patch(Rectangle((q_3.x-(.075/2), q_3.y-(.075/2)), .075, .075, fill=True, color="lime", alpha=1))
 
-y = (-a*x - c)/b
-
-d = (a*q.x + b*q.y + c)/np.sqrt(a**2 + b**2)
+if target_is_ball:
+    ax.add_patch(Circle((vo.x, vo.y), vo.r, fill=None, color="black", alpha=1))
+    obstacles = [q_1, vo]
+else:
+    obstacles = [q_1]
 
 path_x = []
 path_y = []
